@@ -1,0 +1,56 @@
+config {
+  type: "incremental",
+  schema: "analytics_326749750",
+  name: "FunnelUserDaily",
+  bigquery: { partitionBy: "event_date" },
+  description: "User x day lead-funnel fact: visit/start/complete flags + first-touch life_stage & landing_page + traffic/device. Powers funnel KPIs.",
+  tags: ["ga4_reporting", "daily"]
+}
+
+pre_operations {
+  ${ when(incremental(),
+    `DELETE FROM ${self()}
+     WHERE event_date BETWEEN CURRENT_DATE('Australia/Sydney') - 3
+                          AND CURRENT_DATE('Australia/Sydney')`) }
+}
+
+WITH ga AS (
+  SELECT user_pseudo_id, event_date, event_ts, FunnelEvents, landing_page
+  FROM ${ref("GA_UnnestedData")}
+  WHERE event_date BETWEEN CURRENT_DATE('Australia/Sydney') - 3
+                       AND CURRENT_DATE('Australia/Sydney')
+),
+user_day AS (
+  SELECT
+    user_pseudo_id,
+    event_date,
+    MAX(IF(FunnelEvents LIKE 'lifeStage_%', 1, 0))              AS did_start_funnel,
+    MAX(IF(FunnelEvents = 'contact_form_form_submitted', 1, 0)) AS did_complete_funnel,
+    -- first life-stage chosen that day (prefix stripped, e.g. "SingleFemale")
+    REGEXP_REPLACE(
+      ARRAY_AGG(IF(FunnelEvents LIKE 'lifeStage_%', FunnelEvents, NULL)
+                IGNORE NULLS ORDER BY event_ts)[SAFE_OFFSET(0)], '^lifeStage_', '') AS life_stage,
+    -- first landing page that day
+    ARRAY_AGG(landing_page IGNORE NULLS ORDER BY event_ts)[SAFE_OFFSET(0)] AS landing_page
+  FROM ga
+  GROUP BY user_pseudo_id, event_date
+),
+meta AS (   -- collapse User_MetaData to ONE row per user-day (see caveat below)
+  SELECT user_pseudo_id, event_date,
+    ANY_VALUE(Source)         AS source,
+    ANY_VALUE(Medium)         AS medium,
+    ANY_VALUE(Campaign)       AS campaign,
+    ANY_VALUE(deviceCategory) AS device_category,
+    ANY_VALUE(country)        AS country
+  FROM ${ref("User_MetaData")}
+  WHERE event_date BETWEEN CURRENT_DATE('Australia/Sydney') - 3
+                       AND CURRENT_DATE('Australia/Sydney')
+  GROUP BY user_pseudo_id, event_date
+)
+SELECT
+  ud.event_date, ud.user_pseudo_id,
+  ud.did_start_funnel, ud.did_complete_funnel,
+  ud.life_stage, ud.landing_page,
+  m.source, m.medium, m.campaign, m.device_category, m.country
+FROM user_day ud
+LEFT JOIN meta m USING (user_pseudo_id, event_date)
