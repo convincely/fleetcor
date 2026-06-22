@@ -1,0 +1,33 @@
+config {
+  type: "incremental",
+  schema: "analytics_326749750",            // test location; later: analytics_326749750
+  name: "SessionLevelData",
+  bigquery: { partitionBy: "event_date" },
+  description: "Session-level aggregation (reporting layer 1). Built from GA_UnnestedData.",
+  tags: ["ga4_reporting"]
+}
+
+-- analytics_326749750 production 
+-- dataform testing or staging 
+
+pre_operations {
+  ${ when(incremental(),
+    `DELETE FROM ${self()}
+     WHERE event_date BETWEEN CURRENT_DATE('Australia/Sydney') - 2
+                          AND CURRENT_DATE('Australia/Sydney') - 1`) }
+}
+
+SELECT
+  ga_session_id,
+  event_date,
+  user_pseudo_id,
+  STRING_AGG(event_name, '|')         AS c_event_name,
+  STRING_AGG(FunnelEvents, '|')       AS c_FunnelEvents,
+  STRING_AGG(page_location, '|')      AS c_page_location,
+  STRING_AGG(landing_page, '|')       AS c_landing_page,
+  STRING_AGG(page_referrer, '|')      AS c_page_referrer,
+  STRING_AGG(PageLocationLength, '|') AS c_PageLocationLength
+FROM ${ref("GA_UnnestedData")}      -- ← links the graph to Model 1
+WHERE event_date BETWEEN CURRENT_DATE('Australia/Sydney') - 2
+                     AND CURRENT_DATE('Australia/Sydney') - 1
+GROUP BY ga_session_id, event_date, user_pseudo_id

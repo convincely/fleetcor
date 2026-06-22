@@ -1,0 +1,21 @@
+config {
+  type: "operations",
+  description: "CRM → GA4 opportunities pipeline. Runs the stored procedures in order. The 4th proc joins GA_UnnestedData, so it depends on it.",
+  dependencies: ["GA_UnnestedData"],   // forces this to run AFTER unnesting is fresh
+  tags: ["crm"],
+  hasOutput: false
+}
+
+  -- Note: the email→GCS export runs externally (Apps Script) before this.
+CALL
+  `comparehealthinsurance.Opportunities.import_gcs_to_temp`();
+  -- import last week's CRM from GCS
+CALL
+  `comparehealthinsurance.Opportunities.prepare_crm_data`();
+  -- schema, types, pick right record
+CALL
+  `comparehealthinsurance.Opportunities.master_crm_data`();
+  -- combine all CRM data
+CALL
+  `comparehealthinsurance.Opportunities.crm_lj_ga4`();
+  -- master CRM LEFT JOIN GA4 (30 days)

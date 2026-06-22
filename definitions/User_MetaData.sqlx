@@ -1,0 +1,44 @@
+config {
+  type: "incremental",
+  schema: "analytics_326749750",            // test location; later: analytics_326749750
+  name: "User_MetaData",
+  bigquery: { partitionBy: "event_date" },
+  description: "User-level metadata from GA4 (raw layer 2). Reprocesses 2→1 days back.",
+  tags: ["ga4_raw"]
+}
+
+-- analytics_326749750 production 
+-- dataform testing or staging 
+
+
+pre_operations {
+  ${ when(incremental(),
+    `DELETE FROM ${self()}
+     WHERE event_date BETWEEN CURRENT_DATE('Australia/Sydney') - 2
+                          AND CURRENT_DATE('Australia/Sydney') - 1`) }
+}
+
+SELECT
+  user_pseudo_id,
+  traffic_source.name   AS Campaign,
+  traffic_source.source AS Source,
+  traffic_source.medium AS Medium,
+  device.category          AS deviceCategory,
+  device.mobile_brand_name AS deviceBrandName,
+  device.mobile_model_name AS deviceModelName,
+  device.operating_system  AS operatingSystem,
+  device.web_info.browser         AS browser,
+  device.web_info.browser_version AS browserVersion,
+  device.web_info.hostname        AS hostname,
+  device.is_limited_ad_tracking   AS limitedTracking,
+  geo.continent AS continent,
+  geo.country   AS country,
+  geo.region    AS region,
+  geo.city      AS city,
+  DATE(TIMESTAMP_MICROS(event_timestamp), 'Australia/Sydney') AS event_date
+FROM `comparehealthinsurance.analytics_326749750.events_*`
+WHERE _TABLE_SUFFIX BETWEEN FORMAT_DATE('%Y%m%d', CURRENT_DATE('Australia/Sydney') - 2)
+                        AND FORMAT_DATE('%Y%m%d', CURRENT_DATE('Australia/Sydney') - 1)
+GROUP BY user_pseudo_id, Campaign, Source, Medium, deviceCategory, deviceBrandName, deviceModelName,
+         operatingSystem, browser, browserVersion, hostname, limitedTracking,
+         continent, country, region, city, event_date

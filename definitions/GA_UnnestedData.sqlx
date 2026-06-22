@@ -1,0 +1,39 @@
+config {
+  type: "incremental",
+  schema: "analytics_326749750", 
+  name: "GA_UnnestedData",
+  bigquery: { partitionBy: "event_date" },
+  description: "Unnested GA4 event params (raw layer 1). Reprocesses the last 3 days each run.",
+  tags: ["ga4_raw"]
+} 
+
+-- analytics_326749750 production 
+-- dataform testing or staging 
+
+
+pre_operations {
+  -- Only on incremental runs: clear the last 3 days before re-inserting them
+  ${ when(incremental(),
+    `DELETE FROM ${self()}
+     WHERE event_date BETWEEN CURRENT_DATE('Australia/Sydney') - 3
+                          AND CURRENT_DATE('Australia/Sydney')`) }
+}
+
+SELECT
+  user_pseudo_id,
+  MAX(CASE WHEN param.key = "ga_session_id" THEN param.value.int_value END)
+    OVER (PARTITION BY event_timestamp, user_pseudo_id) AS ga_session_id,
+  event_name,
+  stream_id,
+  DATE(TIMESTAMP_MICROS(event_timestamp), 'Australia/Sydney') AS event_date,
+  DATETIME(TIMESTAMP_MICROS(event_timestamp), 'Australia/Sydney') AS event_ts,
+  CASE WHEN param.key = 'FunnelEvents'  THEN param.value.string_value END AS FunnelEvents,
+  CASE WHEN param.key = "page_location" THEN param.value.string_value END AS page_location,
+  CASE WHEN param.key = "page_referrer" THEN param.value.string_value END AS page_referrer,
+  CASE WHEN (SELECT value.int_value  FROM UNNEST(event_params) WHERE event_name = 'page_view' AND key = 'entrances') = 1
+       THEN (SELECT value.string_value FROM UNNEST(event_params) WHERE event_name = 'page_view' AND key = 'page_location') END AS landing_page,
+  CAST(LENGTH((CASE WHEN param.key = "page_location" THEN param.value.string_value END))
+       - LENGTH(REGEXP_REPLACE((CASE WHEN param.key = "page_location" THEN param.value.string_value END), '/', '')) AS STRING) AS PageLocationLength
+FROM `comparehealthinsurance.analytics_326749750.events_*`, UNNEST(event_params) AS param
+WHERE _TABLE_SUFFIX BETWEEN FORMAT_DATE('%Y%m%d', CURRENT_DATE('Australia/Sydney') - 3)
+                        AND FORMAT_DATE('%Y%m%d', CURRENT_DATE('Australia/Sydney'))
