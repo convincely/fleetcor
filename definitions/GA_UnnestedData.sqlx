@@ -4,7 +4,7 @@ config {
   name: "GA_UnnestedData",
   bigquery: { partitionBy: "event_date" },
   description: "Unnested GA4 event params (raw layer 1). Reprocesses the last 3 days each run.",
-  tags: ["ga4_raw"]
+  tags: ["ga4_raw", "daily"]
 } 
 
 -- analytics_326749750 production 

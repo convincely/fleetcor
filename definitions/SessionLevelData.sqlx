@@ -4,7 +4,7 @@ config {
   name: "SessionLevelData",
   bigquery: { partitionBy: "event_date" },
   description: "Session-level aggregation (reporting layer 1). Built from GA_UnnestedData.",
-  tags: ["ga4_reporting"]
+  tags: ["ga4_raw", "daily"]
 }
 
 -- analytics_326749750 production 
