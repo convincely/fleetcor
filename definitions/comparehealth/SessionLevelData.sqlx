@@ -1,10 +1,11 @@
 config {
   type: "incremental",
+  database: "comparehealthinsurance",   //Google Big Query Project ID
   schema: "analytics_326749750",            // test location; later: analytics_326749750
   name: "SessionLevelData",
   bigquery: { partitionBy: "event_date" },
   description: "Session-level aggregation (reporting layer 1). Built from GA_UnnestedData.",
-  tags: ["ga4_raw", "daily"]
+ tags: ["comparehealth", "ga4_raw", "daily"] 
 }
 
 -- analytics_326749750 production sdfadasd

@@ -1,10 +1,11 @@
 config {
   type: "incremental",
+  database: "comparehealthinsurance",   //Google Big Query Project ID
   schema: "analytics_326749750",            // test location; later: analytics_326749750
   name: "User_MetaData",
   bigquery: { partitionBy: "event_date" },
   description: "User-level metadata from GA4 (raw layer 2). Reprocesses 2→1 days back.",
-  tags: ["ga4_raw", "daily"]
+  tags: ["comparehealth", "ga4_raw", "daily"] 
 }
 
 -- analytics_326749750 production 

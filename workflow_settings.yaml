@@ -3,3 +3,4 @@ defaultLocation: australia-southeast1
 defaultDataset: dataform
 defaultAssertionDataset: dataform_assertions
 dataformCoreVersion: 3.0.52
+defaultProject: comparehealthinsurance 

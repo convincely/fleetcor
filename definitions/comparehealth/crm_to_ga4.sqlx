@@ -1,8 +1,9 @@
 config {
   type: "operations",
+  database: "comparehealthinsurance",    //Google Big Query Project ID
   description: "CRM → GA4 opportunities pipeline. Runs the stored procedures in order. The 4th proc joins GA_UnnestedData, so it depends on it.",
   dependencies: ["GA_UnnestedData"],   // forces this to run AFTER unnesting is fresh
-  tags: ["crm", "weekly"],
+  tags: ["comparehealth", "ga4_raw", "weekly"],
   hasOutput: false
 }
 

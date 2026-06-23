@@ -1,10 +1,11 @@
 config {
   type: "incremental",
+  database: "comparehealthinsurance",   //Google Big Query Project ID
   schema: "analytics_326749750",
   name: "FunnelUserDaily",
   bigquery: { partitionBy: "event_date" },
   description: "User x day lead-funnel fact: visit/start/complete flags + first-touch life_stage & landing_page + traffic/device. Powers funnel KPIs.",
-  tags: ["ga4_reporting", "daily"]
+  tags: ["comparehealth", "ga4_raw", "daily"] 
 }
 
 pre_operations {
