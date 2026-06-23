@@ -7,7 +7,7 @@ config {
   tags: ["ga4_raw", "daily"]
 }
 
--- analytics_326749750 production 
+-- analytics_326749750 production sdfadasd
 -- dataform testing or staging asdasdasd
 
 pre_operations {
@@ -30,4 +30,4 @@ SELECT
 FROM ${ref("GA_UnnestedData")}      -- ← links the graph to Model 1
 WHERE event_date BETWEEN CURRENT_DATE('Australia/Sydney') - 2
                      AND CURRENT_DATE('Australia/Sydney') - 1
-GROUP BY ga_session_id, event_date, user_pseudo_id
+GROUP BY ga_session_id, event_date, user_pseudo_id 
