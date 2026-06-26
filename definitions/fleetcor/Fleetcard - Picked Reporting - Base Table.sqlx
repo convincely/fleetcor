@@ -20,7 +20,7 @@ pre_operations {
     `DELETE FROM ${self()}
      WHERE event_date BETWEEN PARSE_DATE('%Y%m%d', ${startSuffix})
                           AND PARSE_DATE('%Y%m%d', ${endSuffix})`) }
-}
+} 
 
 SELECT DISTINCT
   user_pseudo_id,
