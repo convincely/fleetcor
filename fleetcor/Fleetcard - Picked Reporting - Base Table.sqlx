@@ -1,0 +1,56 @@
+config {
+  type: "incremental",
+  database: "fleetcard",
+  schema: "analytics_330455754",
+  name: "FleetcardGA4Unnested_Partitioned_v2",
+  bigquery: { partitionBy: "event_date" },
+  tags: ["fleetcard", "daily"],
+  description: "Unnested GA4 events base table feeding the Metabase dashboard. Migrated from scheduled query 'Fleetcard - Picked Reporting - Base Table' (DG 24 Mar 2026)."
+}
+
+js {
+  const endSuffix   = "FORMAT_DATE('%Y%m%d', CURRENT_DATE('Australia/Sydney'))";
+  const startSuffix = "FORMAT_DATE('%Y%m%d', DATE_SUB(CURRENT_DATE('Australia/Sydney'), INTERVAL 3 DAY))";
+}
+
+pre_operations {
+  -- Incremental runs only: clear the 3-day window before re-inserting (delete+insert = no dupes).
+  -- First run: Dataform CREATEs the table, so this is skipped automatically.
+  ${ when(incremental(),
+    `DELETE FROM ${self()}
+     WHERE event_date BETWEEN PARSE_DATE('%Y%m%d', ${startSuffix})
+                          AND PARSE_DATE('%Y%m%d', ${endSuffix})`) }
+}
+
+SELECT DISTINCT
+  user_pseudo_id,
+  CONCAT(user_pseudo_id, (SELECT param.value.int_value FROM UNNEST(event_params) param WHERE param.key = 'ga_session_id')) AS session_id,
+  event_name,
+  DATE(TIMESTAMP_MICROS(event_timestamp), 'Australia/Sydney')     AS event_date,
+  DATETIME(TIMESTAMP_MICROS(event_timestamp), 'Australia/Sydney') AS event_ts,
+  (SELECT param.value.string_value FROM UNNEST(event_params) param WHERE param.key = 'event_label')  AS event_label,
+  (SELECT param.value.string_value FROM UNNEST(event_params) param WHERE param.key = 'event_action') AS event_action,
+  (SELECT param.value.string_value FROM UNNEST(event_params) param WHERE param.key = 'funnel')       AS funnel,
+  (SELECT param.value.string_value FROM UNNEST(event_params) param WHERE param.key = 'variant')      AS variant,
+  (SELECT param.value.string_value FROM UNNEST(event_params) param WHERE param.key = 'source')       AS event_Source,
+  (SELECT param.value.string_value FROM UNNEST(event_params) param WHERE param.key = 'medium')       AS event_Medium,
+  (SELECT param.value.string_value FROM UNNEST(event_params) param WHERE param.key = 'campaign')     AS event_Campaign,
+  (SELECT param.value.string_value FROM UNNEST(event_params) param WHERE param.key = 'term')         AS event_Keyword,
+  (SELECT param.value.string_value FROM UNNEST(event_params) param WHERE param.key = 'content')      AS event_Ad,
+  session_traffic_source_last_click.cross_channel_campaign.source                AS session_source,
+  session_traffic_source_last_click.cross_channel_campaign.medium                AS session_medium,
+  session_traffic_source_last_click.cross_channel_campaign.campaign_name         AS session_campaign,
+  session_traffic_source_last_click.cross_channel_campaign.default_channel_group AS session_channel_group,
+  event_dimensions.hostname AS hostname,
+  (SELECT param.value.string_value FROM UNNEST(event_params) param WHERE param.key = 'page_location') AS page_location,
+  (SELECT param.value.string_value FROM UNNEST(event_params) param WHERE param.key = 'page_referrer') AS page_referrer,
+  CASE WHEN (SELECT value.int_value FROM UNNEST(event_params) WHERE event_name = 'page_view' AND key = 'entrances') = 1
+       THEN (SELECT value.string_value FROM UNNEST(event_params) WHERE event_name = 'page_view' AND key = 'page_location') END AS landing_page,
+  geo.continent AS continent,
+  geo.country   AS country,
+  geo.region    AS region,
+  geo.city      AS city,
+  device.category         AS device_category,
+  device.web_info.browser AS browser
+FROM `fleetcard.analytics_330455754.events_*`
+WHERE _TABLE_SUFFIX BETWEEN ${startSuffix} AND ${endSuffix}
