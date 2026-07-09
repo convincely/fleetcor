@@ -1,0 +1,41 @@
+config {
+  type: "operations",               // DECLARE + DELETE + INSERT -> operations (verbatim)
+  schema: "analytics_330384502",
+  name: "Daily_cardssmart_Unnest",
+  tags: ["daily"],                  // original schedule: every day 21:41
+  hasOutput: true,
+  description: "Daily unnest into Cardsmart_GA4_Unnest_Data. Migrated verbatim from 'Daily_cardssmart_Unnest'."
+}
+
+Declare StartDate Date Default current_date('Australia/Sydney')-2;
+Declare EndDate Date Default current_date('Australia/Sydney')-1;
+
+Declare StartDateText String Default Format_Date('%Y%m%d', StartDate);
+Declare EndDateText String Default Format_Date('%Y%m%d', EndDate);
+Delete from fleetcard.analytics_330384502.Cardsmart_GA4_Unnest_Data where event_date between StartDate and EndDate;
+
+insert into fleetcard.analytics_330384502.Cardsmart_GA4_Unnest_Data
+SELECT distinct user_pseudo_id,
+(select  ep.value.int_value   from unnest(event_params)ep where ep.key='ga_session_id') as ga_session_id,
+event_name,
+DATE(TIMESTAMP_MICROS(event_timestamp),'Australia/Sydney') as event_date,
+DATETIME(TIMESTAMP_MICROS(event_timestamp), 'Australia/Sydney') as event_ts,
+(select  ep.value.string_value   from unnest(event_params)ep where ep.key='event_label') as event_label,
+(select  ep.value.string_value   from unnest(event_params)ep where ep.key='event_action')  as event_action,
+(select  ep.value.string_value   from unnest(event_params)ep where ep.key='funnel') as funnel,
+traffic_source.name as campaign,
+traffic_source.medium as medium,
+traffic_source.source as source,
+concat(traffic_source.source,'/',traffic_source.medium) sourcemedium,
+event_dimensions.hostname as hostname,
+(select  ep.value.string_value   from unnest(event_params)ep where ep.key='page_location')  as page_location,
+(select  ep.value.string_value   from unnest(event_params)ep where ep.key='page_referrer')  as page_referrer,
+case when (select value.int_value from unnest(event_params) where event_name = 'page_view' and key = 'entrances') = 1 then (select value.string_value from unnest(event_params) where event_name = 'page_view' and key = 'page_location') end as landing_page,
+geo.continent as continent,
+geo.country as country,
+geo.region as region,
+geo.city as city,
+device.category as device_category
+
+ FROM `fleetcard.analytics_330384502.events_*`
+ where _table_suffix between StartDateText and EndDateText

@@ -1,0 +1,35 @@
+config {
+  type: "operations",               // DECLARE + DELETE + INSERT -> operations (verbatim)
+  schema: "analytics_330384502",
+  name: "Daily_CardsSmart_SessionLevelData",
+  tags: ["daily"],                  // original schedule: every day 21:44
+  hasOutput: true,
+  dependencies: ["Daily_cardssmart_Unnest"],   // reads Cardsmart_GA4_Unnest_Data
+  description: "Cardsmart session-level rollup into Cardsmart_SessionLevelData. Migrated verbatim from 'Daily_CardsSmart_SessionLevelData'."
+}
+
+Declare StartDate Date Default current_date('Australia/Sydney')-2;
+Declare EndDate Date Default current_date('Australia/Sydney')-1;
+
+Delete from fleetcard.analytics_330384502.Cardsmart_SessionLevelData where event_date between StartDate and EndDate;
+
+insert into fleetcard.analytics_330384502.Cardsmart_SessionLevelData
+SELECT
+ga_session_id,
+event_date,
+user_pseudo_id,
+STRING_AGG(distinct event_name,'_') as c_event_name,
+STRING_AGG(distinct event_label,'_') as c_event_label,
+STRING_AGG(distinct event_action,'_') as c_event_action,
+STRING_AGG(distinct funnel,'_') as c_funnel,
+STRING_AGG(distinct campaign,'_') as c_campaign,
+STRING_AGG(distinct medium,'_') as c_medium,
+STRING_AGG(distinct source,'_') as c_source,
+STRING_AGG(distinct SourceMedium,'_') as c_sourceMedium,
+STRING_AGG(distinct page_location,'_') as c_page_location,
+STRING_AGG(distinct landing_page,'_') as c_landing_page,
+STRING_AGG(distinct page_referrer,'_') as c_page_referrer,
+STRING_AGG(distinct region,'_') as c_region,hostname,continent,country,device_category
+FROM `fleetcard.analytics_330384502.Cardsmart_GA4_Unnest_Data`
+where event_date between StartDate and EndDate
+group by ga_session_id,event_date,user_pseudo_id,hostname,continent,country,device_category

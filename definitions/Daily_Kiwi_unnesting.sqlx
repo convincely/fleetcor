@@ -1,0 +1,39 @@
+config {
+  type: "operations",               // DECLARE + DELETE + INSERT -> operations (verbatim)
+  schema: "analytics_270209816",
+  name: "Daily_Kiwi_unnesting",
+  tags: ["daily"],                  // original schedule: every day 20:15
+  hasOutput: true,
+  description: "Daily unnest into Kiwi_UnnestData. Migrated verbatim from 'Daily_Kiwi_unnesting'."
+}
+
+Declare StartDate Date Default current_date('Australia/Sydney')-2;
+Declare EndDate Date Default current_date('Australia/Sydney')-1;
+
+Declare StartDateText String Default Format_Date('%Y%m%d', StartDate);
+Declare EndDateText String Default Format_Date('%Y%m%d', EndDate);
+
+Delete from fleetcard.analytics_270209816.Kiwi_UnnestData where event_date between StartDate and EndDate;
+Insert into fleetcard.analytics_270209816.Kiwi_UnnestData
+SELECT distinct user_pseudo_id,
+(select  param.value.int_value from unnest(event_params)param where param.key="ga_session_id" )  ga_session_id,
+event_name,
+DATE(TIMESTAMP_MICROS(event_timestamp),'Australia/Sydney') as event_date,
+DATETIME(TIMESTAMP_MICROS(event_timestamp), 'Australia/Sydney') as event_ts,
+(select  param.value.string_value from unnest(event_params)param where param.key="eventlabel" ) as event_label,
+(select  param.value.string_value from unnest(event_params)param where param.key="eventaction" ) as event_action,
+traffic_source.name as campaign,
+traffic_source.medium as medium,
+traffic_source.source as source,
+event_dimensions.hostname as hostname,
+ (select  param.value.string_value from unnest(event_params)param where param.key="page_location" )  as page_location,
+(select  param.value.string_value from unnest(event_params)param where param.key="page_referrer" )  as page_referrer,
+case when (select value.int_value from unnest(event_params) where event_name = 'page_view' and key = 'entrances') = 1 then (select value.string_value from unnest(event_params) where event_name = 'page_view' and key = 'page_location') end as landing_page,
+geo.continent as continent,
+geo.country as country,
+geo.region as region,
+geo.city as city,
+device.category as device_category
+
+ FROM `fleetcard.analytics_270209816.events_*`
+ where _table_suffix between StartDateText and EndDateText

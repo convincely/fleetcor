@@ -1,0 +1,60 @@
+config {
+  type: "operations",               // DECLARE + DELETE + INSERT -> operations (verbatim)
+  schema: "analytics_330455754",
+  name: "Fleetcard_Picked_Base_Table",
+  tags: ["12hourly"],               // original schedule: every 12 hours
+  hasOutput: true,
+  description: "Picked/Metabase base unnest into FleetcardGA4Unnested_Partitioned_v2 (3-day lookback from latest events_ table). Migrated verbatim from 'Fleetcard - Picked Reporting - Base Table'."
+}
+
+DECLARE startDateText STRING;
+DECLARE endDateText STRING;
+DECLARE startDate DATE;
+DECLARE endDate DATE;
+
+SET (startDateText, endDateText) = (
+  SELECT AS STRUCT
+    FORMAT_DATE('%Y%m%d', DATE_SUB(PARSE_DATE('%Y%m%d', MAX(REGEXP_EXTRACT(table_name, r'(\d{8})'))), INTERVAL 3 DAY)) AS startDateText,
+    MAX(REGEXP_EXTRACT(table_name, r'(\d{8})')) AS endDateText
+  FROM `fleetcard.analytics_330455754.INFORMATION_SCHEMA.TABLES`
+  WHERE table_name LIKE 'events_2%'
+);
+-- Convert string dates (YYYYMMDD) to DATE type
+SET startDate = PARSE_DATE('%Y%m%d', startDateText);
+SET endDate = PARSE_DATE('%Y%m%d', endDateText);
+
+delete from `fleetcard.analytics_330455754.FleetcardGA4Unnested_Partitioned_v2` where event_date between StartDate and EndDate;
+insert into `fleetcard.analytics_330455754.FleetcardGA4Unnested_Partitioned_v2`
+
+SELECT distinct user_pseudo_id,
+concat(user_pseudo_id,(select  param.value.int_value from unnest(event_params) param where param.key='ga_session_id')) as session_id,
+event_name,
+DATE(TIMESTAMP_MICROS(event_timestamp),'Australia/Sydney') as event_date,
+DATETIME(TIMESTAMP_MICROS(event_timestamp), 'Australia/Sydney') as event_ts,
+(select  param.value.string_value from unnest(event_params) param where param.key='event_label' ) event_label,
+(select  param.value.string_value from unnest(event_params) param where param.key='event_action' ) as event_action,
+(select  param.value.string_value from unnest(event_params) param where param.key='funnel' ) as funnel,
+(select  param.value.string_value from unnest(event_params) param where param.key='variant' ) as variant,
+(select  param.value.string_value from unnest(event_params) param where param.key='source' ) as event_Source,
+(select  param.value.string_value from unnest(event_params) param where param.key='medium' ) as event_Medium,
+(select  param.value.string_value from unnest(event_params) param where param.key='campaign' ) as event_Campaign,
+(select  param.value.string_value from unnest(event_params) param where param.key='term' ) as event_Keyword,
+(select  param.value.string_value from unnest(event_params) param where param.key='content' ) as event_Ad,
+session_traffic_source_last_click.cross_channel_campaign.`source` as session_source,
+session_traffic_source_last_click.cross_channel_campaign.`medium` as session_medium,
+session_traffic_source_last_click.cross_channel_campaign.`campaign_name` as session_campaign,
+session_traffic_source_last_click.cross_channel_campaign.`default_channel_group` as session_channel_group,
+event_dimensions.hostname as hostname,
+(select  param.value.string_value from unnest(event_params) param where param.key='page_location' ) page_location,
+(select  param.value.string_value from unnest(event_params) param where param.key='page_referrer' )  page_referrer,
+case when (select value.int_value from unnest(event_params) where event_name = 'page_view' and key = 'entrances') = 1 then (select value.string_value from unnest(event_params) where event_name = 'page_view' and key = 'page_location') end as landing_page,
+geo.continent as continent,
+geo.country as country,
+geo.region as region,
+geo.city as city,
+device.category as device_category,
+device.web_info.browser as browser
+
+ FROM `fleetcard.analytics_330455754.events_*`
+where
+_TABLE_SUFFIX between startDateText and endDateText

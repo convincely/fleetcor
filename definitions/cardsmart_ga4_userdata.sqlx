@@ -1,0 +1,26 @@
+config {
+  type: "table",                    // was WRITE_TRUNCATE, pure SELECT -> table
+  schema: "analytics_330384502",
+  name: "cardsmart_ga4_userdata",
+  tags: ["daily"],                  // original schedule: every day 20:45
+  description: "Cardsmart user metadata from raw GA4 events. Migrated from 'CardSmart_UserMetaData'."
+}
+
+SELECT user_pseudo_id,traffic_source.name Campaign, traffic_source.source Source, traffic_source.medium Medium,
+device.category deviceCategory,
+device.mobile_brand_name deviceBrandName,
+device.mobile_model_name deviceModelName,
+device.operating_system operatingSystem,
+device.web_info.browser browser,
+device.web_info.browser_version browserVersion,
+device.web_info.hostname hostname,
+device.is_limited_ad_tracking limitedTracking,
+geo.continent as continent,
+geo.country as country,
+geo.region as region,
+geo.city as city,
+event_date
+FROM `fleetcard.analytics_330384502.events_*`
+group by user_pseudo_id,Campaign,Source,Medium,deviceCategory,deviceBrandName,deviceModelName,operatingSystem,browser,browserVersion,hostname,limitedTracking,
+continent,country,region,city,event_date
+order by user_pseudo_id
