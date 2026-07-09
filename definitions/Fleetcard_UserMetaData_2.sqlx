@@ -1,0 +1,66 @@
+config {
+  type: "operations",               // DECLARE + INSERT (from events_*) -> operations (verbatim)
+  schema: "analytics_330455754",
+  name: "Fleetcard_UserMetaData_2",
+  tags: ["daily"],                  // original schedule: every day 20:15
+  hasOutput: true,
+  description: "Appends user metadata into Fleetcard_GA4_UsermetaData from raw events_*. Migrated verbatim from 'Fleetcard_UserMetaData_2'. NOTE: original maps Medium<-source and Source<-medium (kept as-is)."
+}
+
+DECLARE
+  EndDate DATE DEFAULT CURRENT_DATE();
+DECLARE
+  StartDate DATE DEFAULT DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY);
+
+
+DECLARE EndDateText string default  CONCAT(CAST(EXTRACT(YEAR from EndDate) as string), LPAD(CAST(EXTRACT(MONTH from EndDate) as string),2,'0'),LPAD(CAST(EXTRACT(day from EndDate) as string),2,'0'));
+
+
+DECLARE StartDateText string default  CONCAT(CAST(EXTRACT(YEAR from StartDate) as string), LPAD(CAST(EXTRACT(MONTH from StartDate) as string),2,'0'),LPAD(CAST(EXTRACT(day from StartDate) as string),2,'0'));
+
+
+
+insert into  `fleetcard.analytics_330455754.Fleetcard_GA4_UsermetaData` (user_pseudo_id,
+deviceCategory,
+deviceBrandName,deviceModelName,operatingSystem,browser,browserVersion,hostname,limitedTracking,continent,country,region,city,event_date,Campaign,Medium,Source)
+SELECT
+  e.user_pseudo_id,
+  e.device.category deviceCategory,
+  e.device.mobile_brand_name deviceBrandName,
+  e.device.mobile_model_name deviceModelName,
+  e.device.operating_system operatingSystem,
+  e.device.web_info.browser browser,
+  e.device.web_info.browser_version browserVersion,
+  e.device.web_info.hostname hostname,
+  e.device.is_limited_ad_tracking limitedTracking,
+  e.geo.continent AS continent,
+  e.geo.country AS country,
+  e.geo.region AS region,
+  e.geo.city AS city,
+DATE(TIMESTAMP_MICROS(e.event_timestamp),'Australia/Sydney') as event_date,
+e.traffic_source.name as Campaign,
+e.traffic_source.source as Medium,
+e.traffic_source.medium as Source
+FROM
+  `fleetcard.analytics_330455754.events_*` e
+  where _TABLE_SUFFIX between StartDateText and EndDateText
+GROUP BY
+  e.user_pseudo_id,
+  deviceCategory,
+  deviceBrandName,
+  deviceModelName,
+  operatingSystem,
+  browser,
+  browserVersion,
+  hostname,
+  limitedTracking,
+  continent,
+  country,
+  region,
+  city,
+  event_date,
+Campaign,
+Medium,
+Source
+ORDER BY
+  user_pseudo_id

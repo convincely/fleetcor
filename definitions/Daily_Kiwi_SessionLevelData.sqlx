@@ -1,0 +1,80 @@
+config {
+  type: "operations",               // DECLARE + intraday-fallback + DELETE + INSERT -> operations (verbatim)
+  schema: "analytics_270209816",
+  name: "Daily_Kiwi_SessionLevelData",
+  tags: ["daily"],                  // original schedule: every day 20:20
+  hasOutput: true,
+  dependencies: ["Daily_Kiwi_unnesting"],   // reads Kiwi_UnnestData
+  description: "Kiwi session-level rollup into Kiwi_SessionLevelReportingData. Migrated verbatim from 'Daily_Kiwi_SessionLevelData'. NOTE: the intraday-availability check reads fleetcard.analytics_330455754.__TABLES__ (Fleetcard dataset) - kept as-is."
+}
+
+Declare Start_date date default current_date('Australia/Sydney')-2;
+Declare End_date Date default current_date('Australia/Sydney')-1 ;
+Declare StartDateText string Default format_date('%Y%m%d',Start_date) ;
+Declare EndDateText String Default format_date('%Y%m%d',End_date);
+Declare aval int64;
+
+set aval=ifnull((SELECT 1 from `fleetcard.analytics_330455754.__TABLES__` where table_id ='events_'||EndDateText),0);
+set EndDateText=case when aval=1 then EndDateText else 'intraday_'||EndDateText end;
+set aval=ifnull((SELECT 1 from `fleetcard.analytics_330455754.__TABLES__` where table_id ='events_'||StartDateText),0);
+set StartDateText=case when aval=1 then StartDateText else 'intraday_'||StartDateText end;
+
+Delete from `fleetcard.analytics_270209816.Kiwi_SessionLevelReportingData` where event_date between Start_Date and End_Date;
+
+insert into `fleetcard.analytics_270209816.Kiwi_SessionLevelReportingData` (
+event_date,
+user_pseudo_id,
+ga_session_id,
+event_ts,
+c_event_name,
+c_event_label,
+c_event_action,
+c_page_location,
+c_landing_page,
+c_page_referrer,
+region,
+hostname,
+continent,
+country,
+city,
+device_category,
+c_campaign,
+c_source,
+c_medium,
+c_sourceMedium
+)
+
+SELECT
+u.event_date,
+u.user_pseudo_id,
+ga_session_id,
+event_ts,
+STRING_AGG(u.event_name,'_') as c_event_name,
+STRING_AGG(u.event_label,'_') as c_event_label,
+STRING_AGG(u.event_action,'_') as c_event_action,
+STRING_AGG(u.page_location,'_') as c_page_location,
+STRING_AGG(u.landing_page,'_') as c_landing_page,
+STRING_AGG(u.page_referrer,'_') as c_page_referrer,
+
+hostname,
+region,
+continent,
+country,
+city,
+device_category,
+campaign as c_campaign,
+Source as c_source,
+Medium as c_medium,
+STRING_AGG(concat(u.Source,' / ',u.Medium)) as c_sourceMedium
+
+FROM `fleetcard.analytics_270209816.Kiwi_UnnestData` u
+where u.event_date between Start_Date and End_Date
+group by u.event_date,u.user_pseudo_id,ga_session_id,event_ts,
+u.hostname,
+region,
+u.continent,
+u.country,
+city,
+u.device_category, campaign,
+Source,
+Medium

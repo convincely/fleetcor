@@ -1,0 +1,62 @@
+config {
+  type: "operations",               // DECLARE + DELETE + INSERT with CTE -> operations (verbatim)
+  schema: "analytics_330384502",
+  name: "Cardsmart_Picked_Reporting_Table",
+  tags: ["12hourly"],               // original schedule: every 12 hours
+  hasOutput: true,
+  dependencies: ["Cardsmart_Picked_Base_Table"],   // reads cardsmart_picked_base_table
+  description: "Picked/Metabase reporting rollup into cardsmart_picked_reporting_table. Migrated verbatim from 'Cardsmart - Picked Reporting Table'."
+}
+
+declare startDate DATE;
+declare endDate DATE;
+
+set (startDate, endDate) = (
+select as struct
+date_sub(max(event_date), INTERVAL 3 DAY) as startDate,
+max(event_date) as endDate
+from `fleetcard.analytics_330384502.cardsmart_picked_base_table`
+);
+
+delete from `fleetcard.analytics_330384502.cardsmart_picked_reporting_table` where event_date between startDate and endDate;
+insert into `fleetcard.analytics_330384502.cardsmart_picked_reporting_table`
+
+
+with landing_page as
+(
+  select
+  session_id,
+  first_value(page_location ignore nulls) over (partition by session_id order by event_ts asc) as landing_page,
+  from `fleetcard.analytics_330384502.cardsmart_picked_base_table`
+  where event_date between startDate and endDate and event_name = "page_view"
+
+)
+
+SELECT
+event_date,
+user_pseudo_id,
+session_id,
+STRING_AGG(event_name,'_') as c_event_name,
+STRING_AGG(event_label,'_') as c_event_label,
+STRING_AGG(event_action,'_') as c_event_action,
+STRING_AGG(funnel,'_') as c_funnel,
+STRING_AGG(concat(funnel,"|",variant),"_") as c_funnel_variant,
+STRING_AGG(page_location,'_') as c_page_location,
+lp.landing_page,
+STRING_AGG(page_referrer,'_') as c_page_referrer,
+STRING_AGG(region,'_') as c_region,
+hostname,
+continent,
+country,
+device_category,
+session_source,
+session_medium,
+concat(session_source," / ",session_medium) as session_source_medium,
+session_campaign,
+session_channel_group
+
+FROM `fleetcard.analytics_330384502.cardsmart_picked_base_table`
+left join landing_page lp using(session_id)
+where event_date between startDate and endDate
+
+group by all

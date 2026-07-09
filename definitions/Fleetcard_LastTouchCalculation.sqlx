@@ -1,0 +1,27 @@
+config {
+  type: "operations",               // DECLARE + INSERT -> operations (verbatim)
+  schema: "analytics_330455754",
+  name: "Fleetcard_LastTouchCalculation",
+  tags: ["daily"],                  // original schedule: every day 20:30
+  hasOutput: true,
+  dependencies: ["Fleetcard_GA4_Unnest_intraday"],   // reads FleetcardGA4Unnested_Partitioned
+  description: "Appends last-touch channel per user/day into Fleetcard_LastTouch_Channel. Migrated verbatim from 'Fleetcard_LastTouchCalculation'."
+}
+
+DECLARE
+  EndDate DATE DEFAULT CURRENT_DATE();
+DECLARE
+  StartDate DATE DEFAULT DATE_SUB(CURRENT_DATE(), INTERVAL 2 DAY);
+
+
+insert into `fleetcard.analytics_330455754.Fleetcard_LastTouch_Channel`
+(user_pseudo_id,event_date,event_Source,event_Medium, event_Campaign,event_keyword, event_ad)
+
+SELECT user_pseudo_id,event_date,max(event_Source) event_Source,max(event_Medium) event_Medium, max(event_Campaign) event_Campaign,max(event_keyword) event_keyword,
+max(event_ad) event_ad,
+  FROM `fleetcard.analytics_330455754.FleetcardGA4Unnested_Partitioned`
+
+where event_date between StartDate and EndDate and
+ (event_Source is not null or event_Medium is not null or event_Campaign is not null or event_keyword is not null or event_ad is not null )
+group by user_pseudo_id,event_date
+order by user_pseudo_id;

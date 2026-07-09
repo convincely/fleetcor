@@ -1,0 +1,80 @@
+config {
+  type: "operations",               // DECLARE + intraday-fallback + DELETE + INSERT -> operations (verbatim)
+  schema: "analytics_330455754",
+  name: "Fleetcard_GA4_Unnest_intraday",
+  tags: ["daily"],                  // original schedule: every day 20:15
+  hasOutput: true,
+  description: "Daily unnest into FleetcardGA4Unnested_Partitioned with events_/intraday_ fallback. Migrated verbatim from the active 'Fleetcard_GA4_Unnest_intraday' (66dd6529)."
+}
+
+Declare Start_date date default current_date('Australia/Sydney')-2;
+Declare End_date Date default current_date('Australia/Sydney')-1 ;
+Declare StartDateText string Default format_date('%Y%m%d',Start_date) ;
+Declare EndDateText String Default format_date('%Y%m%d',End_date);
+Declare aval int64;
+set aval=ifnull((SELECT 1 from `fleetcard.analytics_330455754.__TABLES__` where table_id ='events_'||EndDateText),0);
+set EndDateText=case when aval=1 then EndDateText else 'intraday_'||EndDateText end;
+set aval=ifnull((SELECT 1 from `fleetcard.analytics_330455754.__TABLES__` where table_id ='events_'||StartDateText),0);
+set StartDateText=case when aval=1 then StartDateText else 'intraday_'||StartDateText end;
+
+Delete from `fleetcard.analytics_330455754.FleetcardGA4Unnested_Partitioned` where event_date between start_date and end_date;
+insert into `fleetcard.analytics_330455754.FleetcardGA4Unnested_Partitioned` (
+  user_pseudo_id,
+event_name,
+ event_date,
+event_ts,
+ event_label,
+ event_action,
+ funnel,
+ variant,
+ event_Source,
+ event_Medium,
+ event_Campaign,
+ event_Keyword,
+event_Ad,
+ campaign,
+ medium,
+source,
+keyword,
+ hostname,
+ page_location,
+ page_referrer,
+ landing_page,
+continent,
+ country,
+region,
+city,
+device_category
+)
+
+
+
+SELECT distinct user_pseudo_id,
+event_name,
+DATE(TIMESTAMP_MICROS(event_timestamp),'Australia/Sydney') as event_date,
+DATETIME(TIMESTAMP_MICROS(event_timestamp), 'Australia/Sydney') as event_ts,
+(select  param.value.string_value from unnest(event_params) param where param.key='event_label' ) event_label,
+(select  param.value.string_value from unnest(event_params) param where param.key='event_action' ) as event_action,
+(select  param.value.string_value from unnest(event_params) param where param.key='funnel' ) as funnel,
+(select  param.value.string_value from unnest(event_params) param where param.key='variant' ) as variant,
+(select  param.value.string_value from unnest(event_params) param where param.key='source' ) as event_Source,
+(select  param.value.string_value from unnest(event_params) param where param.key='medium' ) as event_Medium,
+(select  param.value.string_value from unnest(event_params) param where param.key='campaign' ) as event_Campaign,
+(select  param.value.string_value from unnest(event_params) param where param.key='term' ) as event_Keyword,
+(select  param.value.string_value from unnest(event_params) param where param.key='content' ) as event_Ad,
+traffic_source.name as campaign,
+traffic_source.medium as medium,
+traffic_source.source as source,
+collected_traffic_source.manual_term  as keyword,
+event_dimensions.hostname as hostname,
+(select  param.value.string_value from unnest(event_params) param where param.key='page_location' ) page_location,
+(select  param.value.string_value from unnest(event_params) param where param.key='page_referrer' )  page_referrer,
+case when (select value.int_value from unnest(event_params) where event_name = 'page_view' and key = 'entrances') = 1 then (select value.string_value from unnest(event_params) where event_name = 'page_view' and key = 'page_location') end as landing_page,
+geo.continent as continent,
+geo.country as country,
+geo.region as region,
+geo.city as city,
+device.category as device_category
+
+ FROM `fleetcard.analytics_330455754.events_*`
+where _TABLE_SUFFIX between StartDateText and EndDateText

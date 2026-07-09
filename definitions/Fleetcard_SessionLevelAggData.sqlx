@@ -1,0 +1,94 @@
+config {
+  type: "operations",               // DECLARE + intraday-fallback + DELETE + INSERT -> operations (verbatim)
+  schema: "analytics_330455754",
+  name: "Fleetcard_SessionLevelAggData",
+  tags: ["daily"],                  // original schedule: every day 21:24
+  hasOutput: true,
+  dependencies: ["Fleetcard_GA4_Unnest_intraday"],   // reads FleetcardGA4Unnested_Partitioned
+  description: "Session-level rollup into Fleetcard_SessionLevelData. Migrated verbatim from 'Fleetcard_SessionLevelAggData'. Also reads .variant and .SourceMedium tables."
+}
+
+Declare Start_date date default current_date('Australia/Sydney')-2;
+Declare End_date Date default current_date('Australia/Sydney')-1 ;
+Declare StartDateText string Default format_date('%Y%m%d',Start_date) ;
+Declare EndDateText String Default format_date('%Y%m%d',End_date);
+Declare aval int64;
+set aval=ifnull((SELECT 1 from `fleetcard.analytics_330455754.__TABLES__` where table_id ='events_'||EndDateText),0);
+set EndDateText=case when aval=1 then EndDateText else 'intraday_'||EndDateText end;
+set aval=ifnull((SELECT 1 from `fleetcard.analytics_330455754.__TABLES__` where table_id ='events_'||StartDateText),0);
+set StartDateText=case when aval=1 then StartDateText else 'intraday_'||StartDateText end;
+
+Delete from `fleetcard.analytics_330455754.Fleetcard_SessionLevelData` where event_date between Start_Date and End_Date;
+
+insert into `fleetcard.analytics_330455754.Fleetcard_SessionLevelData` (
+event_date,
+user_pseudo_id,
+c_event_name,
+c_event_label,
+c_event_action,
+c_funnel,
+c_keyword,
+c_page_location,
+c_landing_page,
+c_page_referrer,
+c_region,
+hostname,
+continent,
+country,
+device_category,
+variant,
+event_Keyword,
+event_Ad,
+c_campaign,
+c_source,
+c_medium,
+c_sourceMedium
+)
+
+SELECT
+u.event_date,
+u.user_pseudo_id,
+STRING_AGG(u.event_name,'_') as c_event_name,
+STRING_AGG(u.event_label,'_') as c_event_label,
+STRING_AGG(u.event_action,'_') as c_event_action,
+STRING_AGG(u.funnel,'_') as c_funnel,
+STRING_AGG(u.keyword,'_') as c_keyword,
+STRING_AGG(u.page_location,'_') as c_page_location,
+STRING_AGG(u.landing_page,'_') as c_landing_page,
+STRING_AGG(u.page_referrer,'_') as c_page_referrer,
+STRING_AGG(u.region,'_') as c_region,
+u.hostname,
+u.continent,
+u.country,
+u.device_category,
+v.variant,
+u.event_Keyword,
+u.event_Ad,
+s.campaign as c_campaign,
+s.Source as c_source,
+s.Medium as c_medium,
+STRING_AGG(concat(s.Source,' / ',s.Medium)) as c_sourceMedium
+
+FROM `fleetcard.analytics_330455754.FleetcardGA4Unnested_Partitioned` u
+left join
+(select user_pseudo_id,variant from `fleetcard.analytics_330455754.variant` where variant is not null )v
+on
+u.user_pseudo_id = v.user_pseudo_id
+left join
+ `fleetcard.analytics_330455754.SourceMedium` s
+on
+u.user_pseudo_id=s.user_pseudo_id
+
+where u.event_date between Start_Date and End_Date
+
+group by u.event_date,u.user_pseudo_id,
+u.hostname,
+u.continent,
+u.country,
+u.device_category,
+v.variant,
+u.event_Keyword,
+u.event_Ad,
+c_campaign,
+c_source,
+c_medium
