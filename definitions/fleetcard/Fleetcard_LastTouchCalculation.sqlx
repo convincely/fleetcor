@@ -1,6 +1,7 @@
 config {
   type: "operations",               // DECLARE + INSERT -> operations (verbatim)
   schema: "analytics_330455754",
+   disabled : true ,    
   name: "Fleetcard_LastTouchCalculation",
   tags: ["daily"],                  // original schedule: every day 20:30
   hasOutput: true,

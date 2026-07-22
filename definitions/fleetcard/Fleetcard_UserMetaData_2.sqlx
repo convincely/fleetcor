@@ -1,5 +1,6 @@
 config {
-  type: "operations",               // DECLARE + INSERT (from events_*) -> operations (verbatim)
+  type: "operations",   
+   disabled : true ,                // DECLARE + INSERT (from events_*) -> operations (verbatim)
   schema: "analytics_330455754",
   name: "Fleetcard_UserMetaData_2",
   tags: ["daily"],                  // original schedule: every day 20:15
