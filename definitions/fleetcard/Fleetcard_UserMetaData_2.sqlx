@@ -3,7 +3,7 @@ config {
    disabled : true ,                // DECLARE + INSERT (from events_*) -> operations (verbatim)
   schema: "analytics_330455754",
   name: "Fleetcard_UserMetaData_2",
-  tags: ["daily"],                  // original schedule: every day 20:15
+  tags: ["daily_reporting"],                  // original schedule: every day 20:15
   hasOutput: true,
   description: "Appends user metadata into Fleetcard_GA4_UsermetaData from raw events_*. Migrated verbatim from 'Fleetcard_UserMetaData_2'. NOTE: original maps Medium<-source and Source<-medium (kept as-is)."
 }

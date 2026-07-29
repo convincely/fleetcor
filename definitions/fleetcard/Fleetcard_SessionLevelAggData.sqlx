@@ -2,7 +2,7 @@ config {
   type: "operations",               // DECLARE + intraday-fallback + DELETE + INSERT -> operations (verbatim)
   schema: "analytics_330455754",
   name: "Fleetcard_SessionLevelAggData",
-  tags: ["daily"],                  // original schedule: every day 21:24
+  tags: ["daily_reporting"],                  // original schedule: every day 21:24
   hasOutput: true,
   dependencies: ["Fleetcard_GA4_Unnest_intraday"],   // reads FleetcardGA4Unnested_Partitioned
   description: "Session-level rollup into Fleetcard_SessionLevelData. Migrated verbatim from 'Fleetcard_SessionLevelAggData'. Also reads .variant and .SourceMedium tables."

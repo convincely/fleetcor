@@ -2,7 +2,7 @@ config {
   type: "operations",               // DECLARE + DELETE + INSERT with CTE -> operations (verbatim)
   schema: "analytics_330455754",
   name: "Fleetcard_Picked_Reporting_Table",
-  tags: ["daily"],               // original schedule: every 12 hours
+  tags: ["daily_reporting"],               // original schedule: every 12 hours
   hasOutput: true,
   dependencies: ["Fleetcard_Picked_Base_Table"],   // reads FleetcardGA4Unnested_Partitioned_v2
   description: "Picked/Metabase reporting rollup into Fleetcard_SessionLevelData_v2. Migrated verbatim from 'Fleetcard - Picked reporting table query'."
