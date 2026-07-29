@@ -1,8 +1,9 @@
 config {
-  type: "operations",               // DECLARE + DELETE + INSERT -> operations (verbatim)
+  type: "operations",    
+   disabled : true ,              // DECLARE + DELETE + INSERT -> operations (verbatim)
   schema: "analytics_330384502",
   name: "Daily_cardssmart_Unnest",
-  tags: ["daily"],                  // original schedule: every day 21:41
+  tags: ["daily_reporting"],                  // original schedule: every day 21:41
   hasOutput: true,
   description: "Daily unnest into Cardsmart_GA4_Unnest_Data. Migrated verbatim from 'Daily_cardssmart_Unnest'."
 }

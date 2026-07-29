@@ -1,8 +1,9 @@
 config {
-  type: "operations",               // DECLARE + DELETE + INSERT -> operations (verbatim)
+  type: "operations",   
+  disabled : true ,             // DECLARE + DELETE + INSERT -> operations (verbatim)
   schema: "analytics_270209816",
   name: "Daily_Kiwi_unnesting",
-  tags: ["daily"],                  // original schedule: every day 20:15
+  tags: ["daily_reporting"],                  // original schedule: every day 20:15
   hasOutput: true,
   description: "Daily unnest into Kiwi_UnnestData. Migrated verbatim from 'Daily_Kiwi_unnesting'."
 }
