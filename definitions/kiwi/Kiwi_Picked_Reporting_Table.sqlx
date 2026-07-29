@@ -2,7 +2,7 @@ config {
   type: "operations",               // DECLARE + DELETE + INSERT with CTE -> operations (verbatim)
   schema: "analytics_270209816",
   name: "Kiwi_Picked_Reporting_Table",
-  tags: ["12hourly"],               // original schedule: every 12 hours
+  tags: ["daily"],               // original schedule: every 12 hours
   hasOutput: true,
   dependencies: ["Kiwi_Picked_Base_Table"],   // reads kiwi_picked_base_table
   description: "Picked/Metabase reporting rollup into kiwi_picked_reporting_table. Migrated verbatim from 'Kiwi - Picked Reporting - Reporting Table'."

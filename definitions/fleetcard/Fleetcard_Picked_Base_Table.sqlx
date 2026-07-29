@@ -2,7 +2,7 @@ config {
   type: "operations",               // DECLARE + DELETE + INSERT -> operations (verbatim)
   schema: "analytics_330455754",
   name: "Fleetcard_Picked_Base_Table",
-  tags: ["12hourly"],               // original schedule: every 12 hours
+  tags: ["daily_reporting"],               // original schedule: every 12 hours
   hasOutput: true,
   description: "Picked/Metabase base unnest into FleetcardGA4Unnested_Partitioned_v2 (3-day lookback from latest events_ table). Migrated verbatim from 'Fleetcard - Picked Reporting - Base Table'."
 }

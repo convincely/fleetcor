@@ -2,7 +2,7 @@ config {
   type: "operations",               // DECLARE + DELETE + INSERT -> operations (verbatim)
   schema: "analytics_330384502",
   name: "Cardsmart_Picked_Base_Table",
-  tags: ["12hourly"],               // original schedule: every 12 hours
+   tags: ["daily"],               // original schedule: every 12 hours
   hasOutput: true,
   description: "Picked/Metabase base unnest into cardsmart_picked_base_table (3-day lookback). Migrated verbatim from 'Cardsmart - Picked Reporting Base Table'."
 }

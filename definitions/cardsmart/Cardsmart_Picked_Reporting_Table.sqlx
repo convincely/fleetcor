@@ -2,7 +2,7 @@ config {
   type: "operations",               // DECLARE + DELETE + INSERT with CTE -> operations (verbatim)
   schema: "analytics_330384502",
   name: "Cardsmart_Picked_Reporting_Table",
-  tags: ["12hourly"],               // original schedule: every 12 hours
+  tags: ["daily"],               // original schedule: every 12 hours
   hasOutput: true,
   dependencies: ["Cardsmart_Picked_Base_Table"],   // reads cardsmart_picked_base_table
   description: "Picked/Metabase reporting rollup into cardsmart_picked_reporting_table. Migrated verbatim from 'Cardsmart - Picked Reporting Table'."
