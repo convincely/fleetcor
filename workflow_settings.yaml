@@ -1,5 +1,4 @@
-<<<<<<< HEAD
-defaultDataset: dataform         
+<<<<<<< HEAD       
 defaultLocation: australia-southeast1
 defaultAssertionDataset: dataform_assertions
 dataformCoreVersion: 3.0.52
