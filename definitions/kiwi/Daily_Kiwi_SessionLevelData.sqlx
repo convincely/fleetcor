@@ -3,6 +3,7 @@ config {
   schema: "analytics_270209816",
   name: "Daily_Kiwi_SessionLevelData",
   tags: ["daily_reporting"],                  // original schedule: every day 20:20
+  disabled: true,
   hasOutput: true,
   dependencies: ["Daily_Kiwi_unnesting"],   // reads Kiwi_UnnestData
   description: "Kiwi session-level rollup into Kiwi_SessionLevelReportingData. Migrated verbatim from 'Daily_Kiwi_SessionLevelData'. NOTE: the intraday-availability check reads fleetcard.analytics_330455754.__TABLES__ (Fleetcard dataset) - kept as-is."
