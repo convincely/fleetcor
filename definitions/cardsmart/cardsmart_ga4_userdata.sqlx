@@ -1,8 +1,9 @@
 config {
-  type: "table",                    // was WRITE_TRUNCATE, pure SELECT -> table
+  type: "table",   
+  disabled : true ,                   // was WRITE_TRUNCATE, pure SELECT -> table
   schema: "analytics_330384502",
   name: "cardsmart_ga4_userdata",
-  tags: ["daily"],                  // original schedule: every day 20:45
+  tags: ["daily_reporting"],                  // original schedule: every day 20:45
   description: "Cardsmart user metadata from raw GA4 events. Migrated from 'CardSmart_UserMetaData'."
 }
 

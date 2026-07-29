@@ -2,7 +2,7 @@ config {
   type: "operations",               // DECLARE + DELETE + INSERT -> operations (verbatim)
   schema: "analytics_330384502",
   name: "Daily_CardsSmart_SessionLevelData",
-  tags: ["daily"],                  // original schedule: every day 21:44
+  tags: ["daily_reporting"],                  // original schedule: every day 21:44
   hasOutput: true,
   dependencies: ["Daily_cardssmart_Unnest"],   // reads Cardsmart_GA4_Unnest_Data
   description: "Cardsmart session-level rollup into Cardsmart_SessionLevelData. Migrated verbatim from 'Daily_CardsSmart_SessionLevelData'."
