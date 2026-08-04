@@ -19,8 +19,31 @@ from `fleetcard.analytics_330455754.FleetcardGA4Unnested_Partitioned_v2`
 );
 
 delete from `fleetcard.analytics_330455754.Fleetcard_SessionLevelData_v2` where event_date between startDate and endDate;
-insert into `fleetcard.analytics_330455754.Fleetcard_SessionLevelData_v2`
-
+insert into `fleetcard.analytics_330455754.Fleetcard_SessionLevelData_v2` (
+  event_date,
+  user_pseudo_id,
+  session_id,
+  c_event_name,
+  c_event_label,
+  c_event_action,
+  c_funnel,
+  c_funnel_variant,
+  c_page_location,
+  landing_page,
+  c_page_referrer,
+  c_region,
+  hostname,
+  continent,
+  country,
+  device_category,
+  session_source,
+  session_medium,
+  session_source_medium,
+  session_campaign,
+  session_channel_group,
+  browser,
+  product_type_filter
+)
 
 with landing_page as
 (
@@ -54,7 +77,11 @@ session_medium,
 concat(session_source," / ",session_medium) as session_source_medium,
 session_campaign,
 session_channel_group,
-browser
+browser,
+CASE
+    WHEN STRING_AGG(page_location,'_') LIKE '%subplan=classic%' THEN 'Classic'
+    WHEN STRING_AGG(page_location,'_') LIKE '%subplan=rewards%' THEN 'Reward'
+  END AS product_type_filter
 
 FROM `fleetcard.analytics_330455754.FleetcardGA4Unnested_Partitioned_v2`
 left join landing_page lp using(session_id)
