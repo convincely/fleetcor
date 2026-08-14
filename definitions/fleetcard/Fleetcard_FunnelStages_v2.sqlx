@@ -1,0 +1,166 @@
+config {
+  type: "table",
+  schema: "analytics_330455754",
+  name: "Fleetcard_FunnelStages_v2",
+  tags: ["daily_reporting"],
+  dependencies: ["Fleetcard_Picked_Reporting_Table"],   // writes Fleetcard_SessionLevelData_v2
+  bigquery: {
+    partitionBy: "event_date",
+    clusterBy: ["Funnel_type", "Stage_complete"]
+  },
+  assertions: {
+    nonNull: ["event_date", "session_id", "Stage_order", "Stage_complete"]
+
+    // uniqueKey: ["event_date", "session_id", "Stage_order"]
+    // ^ enable once the landing_page fan-out in Fleetcard_Picked_Reporting_Table
+    //   is fixed - it fails while duplicate session rows exist.
+  },
+  description: "One row per session-date per funnel step reached. Replaces the 20-way UNION ALL in Metabase model 2445 ('Fleetcard GA4 BQ FunnelData - V2'), which is reduced to a select over this table."
+}
+
+-- Step definitions are data, not code: one row per funnel step in the array below.
+-- A step matches when c_event_label is like pat_a or pat_b, and - where funnel_pat
+-- is set - c_funnel is like funnel_pat. A null pattern makes the LIKE return null,
+-- which the OR discards, so single-pattern steps just leave pat_b null.
+--
+-- Patterns are byte-identical to Metabase model 2445 as at 2026-08-14, including
+-- the unescaped underscores (which LIKE treats as single-character wildcards) and
+-- the step 1 / step 4 overlap. This is a pure refactor; behaviour changes are a
+-- separate PR.
+
+with base as (
+  select
+    continent,
+    country,
+    session_source,
+    session_medium,
+    session_source_medium,
+    session_channel_group,
+    session_campaign,
+    c_funnel,
+    c_page_referrer,
+    device_category,
+    c_event_label,
+    landing_page,
+    hostname,
+    c_page_location,
+    c_event_name,
+    event_date,
+    user_pseudo_id,
+    session_id,
+    c_event_action,
+    c_region,
+    c_funnel_variant,
+    browser,
+    product_type_filter
+  from `fleetcard.analytics_330455754.Fleetcard_SessionLevelData_v2`
+),
+
+steps as (
+  select
+    b.*,
+    s.ord         as Stage_order,
+    s.funnel_type as Funnel_type,
+    s.step        as Stage_complete
+  from base b
+  cross join unnest(array<struct<
+      ord int64, funnel_type string, step string,
+      pat_a string, pat_b string, funnel_pat string
+    >>[
+
+    ( 1, 'Lead Gen', 'LeadFunnelLoad',      '%fleetSize%',        null, null),
+    ( 2, 'Lead Gen', 'BusinessType',        '%businessType/%',    null, null),
+    ( 3, 'Lead Gen', 'FuelManagement',      '%fuelManagement/%',  null, null),
+    ( 4, 'Lead Gen', 'FleetSize',           '%fleetSize/%',       null, null),
+    ( 5, 'Lead Gen', 'Benefits',            '%benefits/%',        null, null),
+    ( 6, 'Lead Gen', 'Fuel Expenditure',    '%expenditure/%',     null, null),
+    ( 7, 'Lead Gen', 'Lead',                '%success%',          null, null),
+
+    (11, 'E2E', 'Funnel Load (All Pages)',
+         '%splash/splash%',                              null, null),
+    (12, 'E2E', 'Application Start Screen',
+         '%FunnelOpen%',                                 null, '%_e2e%'),
+    (13, 'E2E', 'Application Started',
+         '%virtualPageview/business-details%',           null, '%_e2e%'),
+    (14, 'E2E', 'Business Details Complete',
+         '%business-details_continue%',                  null, '%_e2e%'),
+    (15, 'E2E', 'Applicant Details Complete',
+         '%applicant_continue%',                         null, '%_e2e%'),
+    (16, 'E2E', 'Director Details Complete',
+         '%directorOwner_continue%',
+         '%director-owner_continue%',                          '%_e2e%'),
+    (17, 'E2E', 'Requirements Complete',
+         '%application-requirements_continue%',          null, '%_e2e%'),
+    (18, 'E2E', 'Direct Debit Complete (Optional)',
+         '%application-direct-debit%',
+         '%application-direct-debit_continue%',                '%_e2e%'),
+    (19, 'E2E', 'Terms & Conditions Complete',
+         '%application-terms-and-conditions_continue%',  null, '%_e2e%'),
+    (20, 'E2E', 'Conditional Approval Complete (Optional)',
+         '%conditionalApproval_continue%',
+         '%conditional-approval_continue%',                    '%_e2e%'),
+    (21, 'E2E', 'Offer Accepted',
+         '%/offer-accepted_continue%',                   null, '%_e2e%'),
+    (22, 'E2E', 'Authority Access Complete',
+         '%setup-authorities_continue%',                 null, '%_e2e%'),
+    (23, 'E2E', 'Card Setup Complete (Funnel Completion)',
+         '%/setup-delivery-address-cards_continue%',     null, '%_e2e%')
+
+    -- Stage_order 8, 9 and 10 are unused, and 'Post Introductory Offer' /
+    -- 'E2E_DirectDebit_opt' remain commented out in model 2445.
+
+  ]) as s
+  where (b.c_event_label like s.pat_a or b.c_event_label like s.pat_b)
+    and (s.funnel_pat is null or b.c_funnel like s.funnel_pat)
+)
+
+select
+  *,
+
+  -- Was count(distinct user_pseudo_id) under a `group by all` that included
+  -- user_pseudo_id, so it evaluated to 1 on every row. Metrics that need a
+  -- user count should aggregate user_pseudo_id themselves.
+  1 as users,
+
+  case
+    when lower(session_source_medium) like '%dianomi%'      then 'Dianomi'
+    when lower(session_source_medium) like '%google / cpc%' then 'Google CPC'
+    when lower(session_source_medium) like '%facebook%'
+      or lower(session_source_medium) like '%fb / cpc%'
+      or lower(session_source_medium) like '%ig / cpc%'
+      or lower(session_source_medium) like '%an / cpc%'     then 'Paid Social'
+    when lower(session_source_medium) like '%bing / cpc%'   then 'Bing CPC'
+    when lower(session_source_medium) like '%organic%'      then 'Organic'
+    when lower(session_source_medium) like '%direct%'       then 'Direct'
+    when lower(session_source_medium) like '%email%'        then 'Email'
+    when lower(session_source_medium) like '%taboola%'      then 'Taboola'
+    when lower(session_source_medium) like '%plista%'       then 'Plista'
+    when lower(session_source_medium) like '%outbrain%'     then 'Outbrain'
+    when lower(session_source_medium) like '%affiliate%'    then 'Affiliate'
+    when lower(session_source_medium) like '%healthengine%' then 'Health Engine'
+    when lower(session_source_medium) like '%edm%'          then 'Email'
+    when lower(session_source_medium) like '%referral%'     then 'Referral'
+    else 'Other'
+  end as c_web_channel,
+
+  case
+    when c_event_label like '%trackStep/fleetSize/%'
+    then regexp_extract(c_event_label, r'fleetSize\/([0-9]+\-[0-9]+|[0-9]{3}\+)\_')
+  end as c_fleet_size_bucket_filter,
+
+  case
+    when c_event_label like '%/Another%'           then 'Another'
+    when c_event_label like '%/Car allowance%'     then 'Car allowance'
+    when c_event_label like '%/Expense and claim%' then 'Expense and claim'
+    when c_event_label like '%/None / other%'      then 'None / other'
+    else 'Other'
+  end as c_fuel_management_filter,
+
+  case
+    when c_event_label like '%< $10,000%'         then '<$10,000'
+    when c_event_label like '%$10,000 - $50,000%' then '$10,000 - $50,000'
+    when c_event_label like '%> $50,000%'         then '>$50,000'
+    else 'Other'
+  end as c_fuel_expenditure_filter
+
+from steps
