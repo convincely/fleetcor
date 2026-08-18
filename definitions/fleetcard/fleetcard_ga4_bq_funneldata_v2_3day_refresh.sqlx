@@ -1,5 +1,5 @@
 config {
-  type: "operation",
+  type: "operations",
   name: "fleetcard_ga4_bq_funneldata_v2",
   description: "Daily refresh: Delete and re-insert last 3 days of funnel data to handle late-arriving GA4 data",
   tags: ["daily", "fleetcard", "funnel_analysis"],
