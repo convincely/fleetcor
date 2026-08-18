@@ -1,19 +1,16 @@
 config {
-  type: "table",
+  type: "incremental",
   schema: "analytics_330455754",
   name: "fleetcard_ga4_bq_funneldata_v2",
-  description: "Fleetcard funnel analysis - Lead Gen and E2E application stages with traffic source, device, and funnel-specific dimensions",
+  description: "Fleetcard funnel analysis - Lead Gen and E2E application stages with traffic source, device, and funnel-specific dimensions. Incremental load by event_date.",
   partitionBy: "event_date",
   partitionExpirationDays: null,
+  clusterBy: ["Funnel_type", "Stage_complete"],
+  uniqueKey: ["user_pseudo_id", "session_id", "event_date", "Stage_complete"],
   labels: {
     "owner": "analytics",
     "project": "fleetcard",
     "funnel_type": "lead_gen_and_e2e"
-  },
-  bigqueryOptions: {
-    partitionField: "event_date",
-    partitionType: "DAY",
-    clusterBy: ["Funnel_type", "Stage_complete"]
   }
 }
 
@@ -43,7 +40,9 @@ WITH base AS (
     browser,
     product_type_filter
   FROM analytics_330455754.Fleetcard_SessionLevelData_v2
-  WHERE event_date = '2026-08-01'
+  WHERE event_date >= (
+    ${when(incremental(), `SELECT MAX(event_date) FROM ${self()}`, "'2026-08-01'")}
+  )
 ),
 
 stages AS (
@@ -266,7 +265,7 @@ SELECT
     ELSE 'Other'
   END AS c_web_channel,
   CASE
-    WHEN c_event_label LIKE '%trackStep/fleetSize/%' THEN REGEXP_EXTRACT(c_event_label, r'fleetSize\/([0-9]+\-[0-9]+|[0-9]{3}\+)\_')
+    WHEN c_event_label LIKE '%trackStep/fleetSize/%' then REGEXP_EXTRACT(c_event_label,r'fleetSize\/([0-9]+\-[0-9]+|[0-9]{3}\+)\_')
   END AS c_fleet_size_bucket_filter,
   CASE
     WHEN c_event_label LIKE '%/Another%' THEN 'Another'
